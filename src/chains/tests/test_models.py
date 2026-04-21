@@ -4,6 +4,7 @@ from decimal import Decimal
 import factory
 import web3
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import DataError
 from django.test import TestCase, TransactionTestCase
 from faker import Faker
@@ -55,6 +56,17 @@ class ChainLogoTestCase(TestCase):
                 chain_logo_uri=factory.django.ImageField(width=50, height=513)
             )
             chain.full_clean()
+
+    def test_svg_validation(self) -> None:
+        chain = ChainFactory.create(
+            chain_logo_uri=SimpleUploadedFile(
+                "chain-logo.svg",
+                b'<svg width="156" height="156" viewBox="0 0 156 156" xmlns="http://www.w3.org/2000/svg"></svg>',
+                content_type="image/svg+xml",
+            )
+        )
+
+        chain.full_clean()
 
 
 class GasPriceTestCase(TestCase):
@@ -382,6 +394,17 @@ class ChainCurrencyLogoTestCase(TestCase):
         with self.assertRaises(ValidationError):
             chain = ChainFactory.create(
                 currency_logo_uri=factory.django.ImageField(width=50, height=513)
+            )
+            chain.full_clean()
+
+    def test_svg_width_greater_than_512(self) -> None:
+        with self.assertRaises(ValidationError):
+            chain = ChainFactory.create(
+                currency_logo_uri=SimpleUploadedFile(
+                    "currency-logo.svg",
+                    b'<svg width="513" height="156" viewBox="0 0 513 156" xmlns="http://www.w3.org/2000/svg"></svg>',
+                    content_type="image/svg+xml",
+                )
             )
             chain.full_clean()
 

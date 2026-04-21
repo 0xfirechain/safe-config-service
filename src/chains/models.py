@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: FSL-1.1-MIT
 import os
 import re
+import xml.etree.ElementTree as ET
+from pathlib import Path
 from typing import IO, Union
 from urllib.parse import urlparse
 
@@ -37,15 +39,57 @@ def native_currency_path(instance: "Chain", filename: str) -> str:
 
 
 def validate_native_currency_size(image: Union[str, IO[bytes]]) -> None:
-    image_width, image_height = get_image_dimensions(
-        image
-    )  # (Optional[Int], Optional[Int])
+    image_width, image_height = get_image_dimensions(image)
+    if not image_width or not image_height:
+        image_width, image_height = get_svg_dimensions(image)
     if not image_width or not image_height:
         raise ValidationError(
             f"Could not get image dimensions. Width={image_width}, Height={image_height}"
         )
     if image_width > 512 or image_height > 512:
         raise ValidationError("Image width and height need to be at most 512 pixels")
+
+
+def get_svg_dimensions(image: Union[str, IO[bytes]]) -> tuple[int | None, int | None]:
+    try:
+        if isinstance(image, str):
+            content = Path(image).read_bytes()
+        else:
+            position = image.tell() if hasattr(image, "tell") else None
+            content = image.read()
+            if position is not None and hasattr(image, "seek"):
+                image.seek(position)
+        root = ET.fromstring(content)
+    except (ET.ParseError, FileNotFoundError, TypeError, ValueError):
+        return None, None
+
+    if not root.tag.endswith("svg"):
+        return None, None
+
+    width = parse_svg_length(root.get("width"))
+    height = parse_svg_length(root.get("height"))
+    if width and height:
+        return width, height
+
+    view_box = root.get("viewBox")
+    if not view_box:
+        return None, None
+
+    try:
+        _, _, width_value, height_value = [float(value) for value in view_box.replace(",", " ").split()]
+    except ValueError:
+        return None, None
+
+    return int(width_value), int(height_value)
+
+
+def parse_svg_length(value: str | None) -> int | None:
+    if not value:
+        return None
+    match = re.match(r"^\s*([0-9]+(?:\.[0-9]+)?)", value)
+    if not match:
+        return None
+    return int(float(match.group(1)))
 
 
 def validate_url(url: str) -> None:

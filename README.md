@@ -71,6 +71,25 @@ docker compose up -d db
 pytest src
 ```
 
+## Firechain bootstrap
+
+To create or update the Firechain chain entry in the Config Service database from
+the local `safe-smart-account/deployments/firechain` artifacts, run:
+
+```shell
+python src/manage.py upsert_firechain \
+  --currency-logo-url https://example.com/fire-logo.png \
+  --chain-logo-url https://example.com/firechain-logo.png \
+  --explorer-base-url https://explorer.firechain.example
+```
+
+Notes:
+
+- The command reads contract addresses from `../safe-smart-account/deployments/firechain` by default.
+- `safe_singleton_address` is populated from `SafeL2.json` so the chain runs in Safe L2 mode (`l2=true`).
+- `currency_logo` is required when creating the chain for the first time.
+- If you rerun the command later without logo arguments, the existing stored logos are kept.
+
 ## Code Style Formatter and Linter
 
 Code formatting and linting are enforced before every commit using `pre-commit`.
