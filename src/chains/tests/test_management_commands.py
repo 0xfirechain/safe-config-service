@@ -7,7 +7,11 @@ from tempfile import TemporaryDirectory
 from django.core.management import call_command
 from django.test import TestCase, override_settings
 
-from chains.firechain import FIRECHAIN_CHAIN_ID, FIRECHAIN_DEPLOYMENT_FILES
+from chains.firechain import (
+    FIRECHAIN_CHAIN_ID,
+    FIRECHAIN_CONTRACT_ADDRESSES,
+    FIRECHAIN_DEPLOYMENT_FILES,
+)
 from chains.models import Chain
 
 PNG_1X1 = base64.b64decode(
@@ -17,6 +21,31 @@ PNG_1X1 = base64.b64decode(
 
 @override_settings(CGW_URL=None, CGW_AUTH_TOKEN="test-token")
 class UpsertFirechainCommandTests(TestCase):
+    def test_create_firechain_from_canonical_defaults(self) -> None:
+        with TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            chain_logo_path = self._write_logo(temp_path / "chain-logo.png")
+            currency_logo_path = self._write_logo(temp_path / "currency-logo.png")
+
+            with override_settings(MEDIA_ROOT=temp_path / "media"):
+                call_command(
+                    "upsert_firechain",
+                    explorer_base_url="https://explorer.firechain.example",
+                    chain_logo_path=str(chain_logo_path),
+                    currency_logo_path=str(currency_logo_path),
+                )
+
+            chain = Chain.objects.get(pk=FIRECHAIN_CHAIN_ID)
+            self.assertEqual(chain.short_name, "fire")
+            self.assertEqual(
+                chain.safe_singleton_address,
+                FIRECHAIN_CONTRACT_ADDRESSES["safe_singleton_address"],
+            )
+            self.assertEqual(
+                chain.safe_proxy_factory_address,
+                FIRECHAIN_CONTRACT_ADDRESSES["safe_proxy_factory_address"],
+            )
+
     def test_create_firechain_from_deployments(self) -> None:
         with TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)

@@ -73,8 +73,8 @@ pytest src
 
 ## Firechain bootstrap
 
-To create or update the Firechain chain entry in the Config Service database from
-the local `safe-smart-account/deployments/firechain` artifacts, run:
+To create or update the Firechain chain entry in the Config Service database,
+run:
 
 ```shell
 python src/manage.py upsert_firechain \
@@ -85,7 +85,8 @@ python src/manage.py upsert_firechain \
 
 Notes:
 
-- The command reads contract addresses from `../safe-smart-account/deployments/firechain` by default.
+- By default, the command uses the canonical Safe v1.5.0 addresses for Firechain.
+- If you want to verify or override them from local deployment artifacts, pass `--deployments-dir ../safe-smart-account/deployments/firechain`.
 - `safe_singleton_address` is populated from `SafeL2.json` so the chain runs in Safe L2 mode (`l2=true`).
 - `currency_logo` is required when creating the chain for the first time.
 - If you rerun the command later without logo arguments, the existing stored logos are kept.

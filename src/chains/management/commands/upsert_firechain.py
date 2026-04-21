@@ -13,20 +13,18 @@ from chains.firechain import (
     FIRECHAIN_RPC_URL,
     FIRECHAIN_SHORT_NAME,
     FIRECHAIN_TRANSACTION_SERVICE_URL,
-    get_default_firechain_deployments_dir,
-    load_firechain_contract_addresses,
+    get_firechain_contract_addresses,
 )
 from chains.models import Chain
 
 
 class Command(BaseCommand):
-    help = "Create or update the Firechain chain entry from safe-smart-account deployment artifacts"
+    help = "Create or update the Firechain chain entry using canonical Safe addresses or optional deployment artifacts"
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--deployments-dir",
-            default=str(get_default_firechain_deployments_dir()),
-            help="Path to safe-smart-account/deployments/firechain",
+            help="Optional path to safe-smart-account/deployments/firechain for verification or override",
         )
         parser.add_argument("--chain-name", default=FIRECHAIN_NAME)
         parser.add_argument("--short-name", default=FIRECHAIN_SHORT_NAME)
@@ -56,9 +54,12 @@ class Command(BaseCommand):
         parser.add_argument("--relevance", default=100, type=int)
 
     def handle(self, *args, **options):
-        deployments_dir = Path(options["deployments_dir"]).expanduser().resolve()
-        if not deployments_dir.exists():
-            raise CommandError(f"Deployments dir not found: {deployments_dir}")
+        deployments_dir_option = options["deployments_dir"]
+        deployments_dir = None
+        if deployments_dir_option:
+            deployments_dir = Path(deployments_dir_option).expanduser().resolve()
+            if not deployments_dir.exists():
+                raise CommandError(f"Deployments dir not found: {deployments_dir}")
 
         chain = Chain.objects.filter(pk=FIRECHAIN_CHAIN_ID).first()
         creating = chain is None
@@ -102,7 +103,7 @@ class Command(BaseCommand):
         chain.block_explorer_uri_tx_hash_template = tx_template
         chain.block_explorer_uri_api_template = api_template
 
-        contract_addresses = load_firechain_contract_addresses(deployments_dir)
+        contract_addresses = get_firechain_contract_addresses(deployments_dir)
         for field_name, address in contract_addresses.items():
             setattr(chain, field_name, address)
 
