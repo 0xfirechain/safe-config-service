@@ -9,10 +9,11 @@ from django.test import TestCase, override_settings
 
 from chains.firechain import (
     FIRECHAIN_CHAIN_ID,
+    FIRECHAIN_CGW_SERVICE_KEY,
     FIRECHAIN_CONTRACT_ADDRESSES,
     FIRECHAIN_DEPLOYMENT_FILES,
 )
-from chains.models import Chain
+from chains.models import Chain, Feature, Service
 
 PNG_1X1 = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aP2cAAAAASUVORK5CYII="
@@ -44,6 +45,15 @@ class UpsertFirechainCommandTests(TestCase):
             self.assertEqual(
                 chain.safe_proxy_factory_address,
                 FIRECHAIN_CONTRACT_ADDRESSES["safe_proxy_factory_address"],
+            )
+            self.assertTrue(chain.feature_set.filter(key="DEFAULT_TOKENLIST").exists())
+            self.assertTrue(
+                Service.objects.filter(key=FIRECHAIN_CGW_SERVICE_KEY).exists()
+            )
+            self.assertTrue(
+                Feature.objects.get(key="DEFAULT_TOKENLIST")
+                .services.filter(key=FIRECHAIN_CGW_SERVICE_KEY)
+                .exists()
             )
 
     def test_create_firechain_from_deployments(self) -> None:

@@ -8,14 +8,17 @@ from django.core.management.base import BaseCommand, CommandError
 
 from chains.firechain import (
     FIRECHAIN_CHAIN_ID,
+    FIRECHAIN_CGW_SERVICE_KEY,
+    FIRECHAIN_CGW_SERVICE_NAME,
     FIRECHAIN_DESCRIPTION,
+    FIRECHAIN_FEATURE_KEYS,
     FIRECHAIN_NAME,
     FIRECHAIN_RPC_URL,
     FIRECHAIN_SHORT_NAME,
     FIRECHAIN_TRANSACTION_SERVICE_URL,
     get_firechain_contract_addresses,
 )
-from chains.models import Chain
+from chains.models import Chain, Feature, Service
 
 
 class Command(BaseCommand):
@@ -126,6 +129,7 @@ class Command(BaseCommand):
 
         chain.full_clean()
         chain.save()
+        self._setup_firechain_features(chain)
 
         action = "Created" if creating else "Updated"
         self.stdout.write(
@@ -206,3 +210,23 @@ class Command(BaseCommand):
             api_template
             or "https://placeholderURL/api?module={{module}}&action={{action}}&address={{address}}&apiKey={{apiKey}}",
         )
+
+    def _setup_firechain_features(self, chain: Chain) -> None:
+        cgw_service, _ = Service.objects.get_or_create(
+            key=FIRECHAIN_CGW_SERVICE_KEY,
+            defaults={
+                "name": FIRECHAIN_CGW_SERVICE_NAME,
+                "description": "Service-scoped features for the Safe Client Gateway",
+            },
+        )
+
+        for feature_key in FIRECHAIN_FEATURE_KEYS:
+            feature, _ = Feature.objects.get_or_create(
+                key=feature_key,
+                defaults={
+                    "description": f"Firechain feature {feature_key}",
+                    "scope": Feature.Scope.PER_CHAIN,
+                },
+            )
+            feature.chains.add(chain)
+            feature.services.add(cgw_service)
